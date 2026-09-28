@@ -1,13 +1,28 @@
+#Nord Theme
 theme = Nord
+
+# Clipboard
+# 선택한 텍스트를 clipboard로 자동 복사
 copy-on-select = clipboard
 right-click-action = paste
+mouse-reporting = false
 
-# Focus Split Keybindings
-# close split = Ctrl + D
-keybind = ctrl+right=goto_split:right
-keybind = ctrl+left=goto_split:left
-keybind = ctrl+up=goto_split:up
-keybind = ctrl+down=goto_split:down
+font-family = "Ubuntu Mono"
 
-window-width = 1440
-window-height = 900
+keybind = ctrl+l=goto_split:right
+keybind = ctrl+h=goto_split:left
+keybind = ctrl+k=goto_split:up
+keybind = ctrl+j=goto_split:down
+
+keybind = ctrl+right=new_split:right
+keybind = ctrl+down=new_split:down
+keybind = ctrl+left=new_split:left
+keybind = ctrl+up=new_split:up
+
+keybind = ctrl+backspace=close_surface
+keybind = ctrl+t=new_tab
+keybind = ctrl+tab=next_tab
+keybind = ctrl+shift+tab=previous_tab
+
+window-width = 165
+window-height = 55
