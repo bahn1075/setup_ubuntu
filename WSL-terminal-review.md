@@ -41,7 +41,7 @@ sudo fc-cache -fv
 rm -rf /tmp/meslo /tmp/meslo.zip
 ```
 
-### Windows VS Code의 eza 아이콘 설정
+### 3-1. Windows VS Code의 eza 아이콘 설정
 
 Windows에서 실행하는 VS Code는 Remote WSL에서도 Windows에 설치된 글꼴을 사용합니다. 외부 터미널에서 정상 표시되는 Nerd Font의 이름을 확인하고, 같은 글꼴을 Windows에도 설치하세요. 이미 설치했다면 설치 단계는 생략합니다.
 
@@ -106,15 +106,32 @@ if ! grep -Fqx 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' "$zshrc_
   echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "$zshrc_path"
 fi
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+if ! grep -Fqx 'export PATH="$HOME/.local/bin:$PATH"' "$zshrc_path"; then
+  echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$zshrc_path"
+fi
+export PATH="$HOME/.local/bin:$PATH"
 ```
+
+`$HOME/.local/bin`은 Codex 등 사용자 계정으로 설치하는 실행 파일의 경로입니다. `.zshrc`에 기록해야 새 zsh 터미널에서도 사용할 수 있습니다.
 
 ## 6. Homebrew 패키지 설치
 
 ```zsh
-brew install starship fastfetch k9s eza ripgrep zsh-patina kubectx superfile zsh-autosuggestions vim gh tree node lazyssh lazydocker helm jq btop bat kubens
+brew install starship fastfetch k9s eza ripgrep zsh-patina kubectx superfile zsh-autosuggestions vim gh tree node lazyssh lazydocker helm jq btop bat --no-ask
 ```
 
 npm은 Homebrew `node`에 포함되므로 apt로 다시 설치하지 않습니다.
+
+### 6-1. GitHub 로그인
+
+`gh` 설치 후 로그인과 Git 사용자 정보를 설정합니다.
+
+```zsh
+gh auth login
+
+git config --global user.name "cozy"
+git config --global user.email bahn1075@gmail.com
+```
 
 ## 7. Starship 프롬프트
 
@@ -129,7 +146,33 @@ if ! grep -Fqx 'eval "$(starship init zsh)"' "$zshrc_path"; then
 fi
 ```
 
-## 8. eza를 ls로 사용
+## 8. Codex CLI 설치와 확인
+
+### 8-1. 설치
+
+이미 설치했다면 설치 명령은 생략하고 확인 단계로 넘어가세요.
+
+```zsh
+curl -fsSL https://chatgpt.com/codex/install.sh | sh
+```
+
+### 8-2. PATH 적용과 설치 확인
+
+설치기가 `.bashrc`에 PATH를 추가하더라도 zsh는 기본적으로 이 파일을 읽지 않습니다. 5단계에서 `.zshrc`에 기록한 사용자 실행 경로를 현재 셸에도 적용하고 확인합니다. 설치기를 `sh`로 실행해도 부모인 현재 zsh의 PATH는 변경되지 않습니다.
+
+```zsh
+export PATH="$HOME/.local/bin:$PATH"
+command -v codex
+codex --version
+```
+
+경로와 버전이 정상 출력되면 실행합니다.
+
+```zsh
+codex
+```
+
+## 9. eza를 ls로 사용
 
 ```zsh
 zshrc_path="${ZDOTDIR:-$HOME}/.zshrc"
@@ -144,7 +187,7 @@ ZSHRC
 fi
 ```
 
-## 9. 시작 화면: fastfetch와 로고
+## 10. 시작 화면: fastfetch와 로고
 
 fastfetch를 추가합니다.
 
@@ -164,7 +207,7 @@ if ! grep -Fqx 'npx oh-my-logo "MY WSL" fire --filled --block-font chrome --lett
 fi
 ```
 
-## 10. 자동 제안과 patina 구문 강조
+## 11. 자동 제안과 patina 구문 강조
 
 기존 `.zshrc`에 `zsh-syntax-highlighting` 로딩이 있으면 제거하세요. 마커 없이 추가했던 autosuggestions/patina 설정도 중복되지 않게 정리합니다. 이 블록은 다른 `.zshrc` 설정을 추가한 뒤 마지막에 실행하세요.
 
@@ -195,7 +238,7 @@ eza --icons
 echo "hello"
 ```
 
-## 11. Docker 설치
+## 12. Docker 설치
 
 WSL의 systemd 활성화가 필요합니다. 아래 블록은 현재 Ubuntu 코드명의 Docker 저장소를 먼저 확인합니다. 저장소가 없는 `stonking` 등에서는 Ubuntu의 `docker.io` 패키지를 설치합니다. Docker CE 패키지와 Ubuntu 배포 패키지는 이름이 다릅니다.
 
@@ -250,31 +293,36 @@ sudo docker run --rm hello-world
 
 새로 로그인하면 그룹 권한이 적용됩니다. 아래 minikube 단계는 `sudo -H -u "$USER" -g docker`로 사용자 계정과 Docker 그룹 권한을 사용합니다.
 
-## 12. kubectl 설치
+## 13. kubectl 설치
 
-다음 다운로드는 amd64 환경용입니다.
-
-```zsh
-cd /tmp
-curl -fLO "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-kubectl version --client
-```
-
-## 13. minikube 설치와 실행
-
-### 13-1. 설치
-
-다음 다운로드도 amd64 환경용입니다.
+Ubuntu의 패키지 아키텍처에 맞는 실행 파일을 다운로드합니다. AMD64 환경에서는 `amd64`, ARM64 환경에서는 `arm64`가 선택됩니다.
 
 ```zsh
 cd /tmp
-curl -fLO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-sudo dpkg -i minikube_latest_amd64.deb
-minikube version
+kubectl_arch="$(dpkg --print-architecture)"
+kubectl_version="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
+if [ -n "$kubectl_version" ]; then
+  curl -fL "https://dl.k8s.io/release/$kubectl_version/bin/linux/$kubectl_arch/kubectl" -o "kubectl-$kubectl_arch" &&
+    sudo install -o root -g root -m 0755 "kubectl-$kubectl_arch" /usr/local/bin/kubectl &&
+    kubectl version --client
+fi
 ```
 
-### 13-2. 자원 확인
+## 14. minikube 설치와 실행
+
+### 14-1. 설치
+
+Ubuntu의 패키지 아키텍처에 맞는 `.deb` 패키지를 다운로드합니다.
+
+```zsh
+cd /tmp
+minikube_arch="$(dpkg --print-architecture)"
+curl -fLO "https://storage.googleapis.com/minikube/releases/latest/minikube_latest_$minikube_arch.deb" &&
+  sudo dpkg -i "minikube_latest_$minikube_arch.deb" &&
+  minikube version
+```
+
+### 14-2. 자원 확인
 
 ```zsh
 nproc
@@ -288,13 +336,13 @@ minikube config set cpus 2
 minikube config set memory 3072
 ```
 
-### 13-3. 클러스터 시작
+### 14-3. 클러스터 시작
 
 ```zsh
 sudo -H -u "$USER" -g docker minikube start --driver=docker --addons=metrics-server,ingress,ingress-dns,logviewer,metallb
 ```
 
-## 14. kubectx / kubens 추가 설정
+## 15. kubectx / kubens 추가 설정
 
 두 도구는 이미 6단계에서 Homebrew로 설치했습니다. 먼저 실행 여부를 확인하세요.
 
@@ -308,12 +356,14 @@ command -v kubectx kubens
 curl -fsSL https://raw.githubusercontent.com/bahn1075/el_init/oel10/72.kubectx_kubens.sh | bash
 ```
 
-## 15. 최종 확인
+## 16. 최종 확인
 
 새 WSL 터미널을 열고 실행합니다.
 
 ```zsh
 zsh -n "${ZDOTDIR:-$HOME}/.zshrc"
+command -v codex
+codex --version
 ls
 docker ps
 kubectl version --client
