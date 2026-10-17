@@ -53,12 +53,12 @@ gnome-tweaks
 WSL 내부 프로그램용 글꼴을 설치합니다.
 
 ```sh
-curl -fL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.1.1/Meslo.zip -o /tmp/meslo.zip
-unzip -o /tmp/meslo.zip -d /tmp/meslo
-sudo mkdir -p /usr/share/fonts/truetype/meslo-nerd
-sudo cp /tmp/meslo/*.ttf /usr/share/fonts/truetype/meslo-nerd/
+curl -fL https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/UbuntuMono.zip -o /tmp/ubuntu-mono.zip
+unzip -o /tmp/ubuntu-mono.zip -d /tmp/ubuntu-mono
+sudo mkdir -p /usr/share/fonts/truetype/ubuntu-mono-nerd
+sudo cp /tmp/ubuntu-mono/*.ttf /usr/share/fonts/truetype/ubuntu-mono-nerd/
 sudo fc-cache -fv
-rm -rf /tmp/meslo /tmp/meslo.zip
+rm -rf /tmp/ubuntu-mono /tmp/ubuntu-mono.zip
 ```
 
 ### 3-1. Windows VS Code의 eza 아이콘 설정
