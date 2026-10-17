@@ -1,0 +1,14 @@
+{
+  "torch": "2.14.1+rocm7.2",
+  "hip": "7.2.53211",
+  "gpu": "AMD Radeon RX 9070 XT",
+  "architecture": "gfx1201",
+  "vram_bytes": 17095983104,
+  "device": "cuda:0",
+  "matrix_shape": [
+    256,
+    256
+  ],
+  "cpu_result_matches": true,
+  "status": "PASS"
+}

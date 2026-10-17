@@ -1,0 +1,19 @@
+{
+  "backend": "pytorch",
+  "model_backend": "pytorch",
+  "ml_tokens_saved": 0,
+  "tokens_before": 4809,
+  "tokens_after": 2420,
+  "retrieval_matches": true,
+  "read_cache_verified": true,
+  "mcp_tools": [
+    "headroom_compress",
+    "headroom_read",
+    "headroom_retrieve",
+    "headroom_stats"
+  ],
+  "headroom_version": "0.41.0",
+  "torch_version": "2.14.1+rocm7.2",
+  "gpu": "AMD Radeon RX 9070 XT",
+  "configured_backend": "pytorch"
+}

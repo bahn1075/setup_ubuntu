@@ -25,8 +25,28 @@ sudo -n true && echo "패스워드 없이 sudo 가능" || echo "패스워드 필
 
 ```sh
 sudo apt update && sudo apt upgrade -y
-sudo apt install zip unzip wget zsh curl git fontconfig -y
+sudo apt install zip unzip wget zsh curl gnome-shell-extensions gnome-tweaks git fontconfig ghostty -y
 ```
+
+# nord gnome shell theme 설치
+```
+# 테마 다운로드
+cd temp
+git clone https://github.com/EliverLara/Nordic.git
+
+# 테마 디렉토리로 복사
+mkdir -p ~/.themes
+cp -r Nordic ~/.themes/
+
+# 또는 시스템 전체에 설치
+sudo cp -r Nordic /usr/share/themes/
+```
+gnome shell extension (메뉴에서 '확장' 이라고 이름 붙여진)
+에서 user theme를 활성화 하고 터미널에서
+```
+gnome-tweaks
+```
+수행 후 appearence 에서 shell 부분에 nord 선택
 
 ## 3. Nerd Font 설치
 
@@ -117,7 +137,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ## 6. Homebrew 패키지 설치
 
 ```zsh
-brew install starship fastfetch k9s eza ripgrep zsh-patina kubectx superfile zsh-autosuggestions vim gh tree node lazyssh lazydocker helm jq btop bat --no-ask
+brew install starship fastfetch k9s eza ripgrep zsh-patina kubectx superfile zsh-autosuggestions vim gh tree node lazyssh lazydocker helm jq btop bat uv bun --no-ask
 ```
 
 npm은 Homebrew `node`에 포함되므로 apt로 다시 설치하지 않습니다.
