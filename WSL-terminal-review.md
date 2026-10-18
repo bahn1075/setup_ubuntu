@@ -142,6 +142,45 @@ brew install starship fastfetch k9s eza ripgrep zsh-patina kubectx superfile zsh
 
 npm은 Homebrew `node`에 포함되므로 apt로 다시 설치하지 않습니다.
 
+
+## 별도 설치 대상
+
+### MS edge
+```
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /usr/share/keyrings/microsoft-edge.gpg > /dev/null
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-edge.gpg] https://packages.microsoft.com/repos/edge stable main" | sudo tee /etc/apt/sources.list.d/microsoft-edge.list
+
+sudo apt update && sudo apt install microsoft-edge-stable
+```
+### tailscale client - 26.10
+```
+sudo mkdir -p /usr/share/keyrings
+
+curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/resolute.noarmor.gpg \
+  | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+
+curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/resolute.tailscale-keyring.list \
+  | sudo tee /etc/apt/sources.list.d/tailscale.list
+
+sudo apt update
+sudo apt install -y tailscale
+
+sudo systemctl enable --now tailscaled
+sudo tailscale up
+```
+이후 별도 tailscale 수동 설정 진행
+
+### apt로 vscode 설치
+
+```
+sudo apt install wget gpg &&
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+sudo vi /etc/apt/sources.list.d/vscode.sources
+sudo apt update && sudo apt install code
+```
+이후 별도 tailscale 수동 설정 진행
+
+
 ### 6-1. GitHub 로그인
 
 `gh` 설치 후 로그인과 Git 사용자 정보를 설정합니다.
@@ -388,4 +427,145 @@ ls
 docker ps
 kubectl version --client
 minikube status
+```
+
+## 17. btop GPU 그래프 표시 — AMD / Intel / NVIDIA
+
+일반 Ubuntu와 WSL에서 사용할 수 있는 점검 순서입니다. GPU 연산이 가능하더라도 btop의 통계 수집 기능이 지원되지 않으면 그래프가 표시되지 않을 수 있습니다. 아래 AMD 해결 사례는 일반 Ubuntu 26.10에서 검증했습니다.
+
+### 17-1. 공통 확인과 GPU 패널 활성화
+
+먼저 실제로 실행되는 btop과 GPU 드라이버를 확인합니다. Homebrew와 apt 버전이 함께 있으면 실행 경로가 다를 수 있습니다.
+
+```zsh
+command -v btop
+btop --version
+lspci -nnk | rg -A3 'VGA|3D|Display'
+ls -l /dev/dri
+```
+
+`btop --version`의 빌드 옵션에서 `GPU_SUPPORT=true`를 확인합니다. GPU 지원이 빠진 빌드는 지원되는 패키지로 교체하거나 `make GPU_SUPPORT=true`로 빌드해야 합니다.
+
+btop을 실행한 상태에서 `5` 키를 누르면 첫 번째 GPU 패널을 켜고 끌 수 있습니다. GPU를 인식한 경우 설정 화면에서도 표시할 패널을 선택할 수 있습니다.
+
+설정 파일을 직접 수정하려면 **실행 중인 btop을 모두 종료한 뒤** 아래 명령으로 백업하고 편집합니다. 실행 중인 btop이 종료되면서 설정을 덮어쓸 수 있습니다.
+
+```zsh
+btop_config="${XDG_CONFIG_HOME:-$HOME/.config}/btop/btop.conf"
+cp -p "$btop_config" "$btop_config.bak-$(date +%Y%m%d-%H%M%S)"
+nano "$btop_config"
+```
+
+기존 `shown_boxes` 항목에 `gpu0`을 추가합니다. 기존 패널 선택은 유지하세요.
+
+```ini
+shown_boxes = "cpu mem net proc gpu0"
+```
+
+`shown_gpus`가 특정 제조사로 제한되어 있으면 사용할 GPU도 포함해야 합니다. btop 1.4.7의 기본값은 다음과 같습니다.
+
+```ini
+shown_gpus = "nvidia amd intel apple"
+```
+
+설정 파일이 없다면 btop을 한 번 실행하고 종료해서 생성합니다. `btop --config`로 별도 설정을 지정했다면 해당 파일을 수정하세요. GPU 자체를 인식하지 못한 경우에는 패널 설정만으로 해결되지 않으므로 아래 제조사별 항목을 확인합니다.
+
+### 17-2. AMD: ROCm SMI 라이브러리 설치
+
+Ubuntu 26.10 / Radeon RX 9070 계열 / Homebrew btop 1.4.7에서 다음 두 원인을 확인했습니다.
+
+- GPU 지원 빌드와 `amdgpu` 드라이버는 정상이나 ROCm SMI 라이브러리가 설치되지 않았습니다.
+- `shown_boxes`에 `gpu0`이 없었습니다.
+
+로그에는 `Failed to load librocm_smi64.so, AMD GPUs will not be detected`가 기록되었습니다. 다음 패키지를 설치한 뒤 GPU 패널을 활성화하여 해결했습니다.
+
+```zsh
+sudo apt update
+sudo apt install --no-install-recommends librocm-smi-dev
+ldconfig -p | rg 'librocm_smi64'
+btop
+```
+
+이 시스템에서는 런타임 `librocm-smi64-7`도 함께 설치되었습니다. btop 1.4.7은 `.so.7` 이름을 직접 탐색하지 않으므로, `librocm-smi-dev`가 제공하는 `librocm_smi64.so` 링크를 사용합니다. 다른 버전의 라이브러리 이름으로 임의의 심볼릭 링크를 만들지 마세요. Ubuntu 버전에 따라 패키지 제공 여부와 버전은 다를 수 있습니다.
+
+실행 화면에서 GPU 사용률 그래프, 사용률 6%, 온도 62°C, 클럭 및 전력 표시를 확인했습니다. PCIe 전송량과 최대 온도 조회는 실패했으며, 최대 온도 기준값은 btop의 기본값 110°C가 사용되었습니다. 이 값은 GPU 제조사가 보증한 온도 한계로 해석하지 마세요. PyTorch나 전체 ROCm 개발 환경은 이 해결 작업에 필요하지 않았습니다.
+
+### 17-3. Intel: i915 / xe 드라이버 구분
+
+먼저 `lspci -nnk`의 `Kernel driver in use`를 확인합니다.
+
+| 드라이버 | btop 1.4.7에서 확인할 사항 |
+| --- | --- |
+| `i915` | GPU 지원 빌드와 성능 카운터 접근 권한을 확인합니다. |
+| `xe` | 정식 1.4.7의 기존 Intel 감지 경로로는 지원되지 않습니다. Xe 지원이 포함된 빌드가 필요합니다. |
+
+`i915`에서 권한 문제인지 구분하려면 실제 실행 파일의 절대 경로로 한 번 비교 실행합니다.
+
+```zsh
+sudo "$(command -v btop)" --debug
+```
+
+관리자 실행에서만 GPU가 표시된다면 권한 설정을 확인합니다. 소스에서 설치한 btop은 공식 설치 절차의 `sudo make setcap`을 사용할 수 있습니다. 설치에 `PREFIX`를 지정했다면 같은 값을 사용해야 합니다. 이 명령은 실행 파일에 권한을 부여하므로, 설치한 빌드와 경로를 확인한 뒤 적용하세요. 패키지 업데이트 후에는 권한이 초기화될 수 있습니다.
+
+`xe`는 권한을 높이는 것만으로 지원이 추가되지 않습니다. [Intel Xe 지원 PR #1457](https://github.com/aristocratos/btop/pull/1457)의 병합 여부와 사용 중인 버전의 지원 상태를 먼저 확인하세요. 이번 문서 작성 시 확인한 PR은 미병합 상태였습니다. 정식 지원 전에는 해당 패치가 포함된 빌드가 필요하며, 표시 가능한 온도·전력·메모리 항목은 GPU와 구현에 따라 다릅니다.
+
+### 17-4. NVIDIA: 드라이버와 NVML 확인
+
+btop의 NVIDIA 통계 수집에는 NVIDIA 드라이버와 NVML(`libnvidia-ml.so`)이 필요합니다. 먼저 드라이버와 라이브러리를 확인합니다.
+
+```zsh
+nvidia-smi
+ldconfig -p | rg 'libnvidia-ml'
+```
+
+일반 Ubuntu에서 `nvidia-smi`가 실패하면 먼저 드라이버 설치·로딩 문제를 해결합니다. 드라이버가 없다면 Ubuntu의 **소프트웨어 및 업데이트 → 추가 드라이버**에서 해당 GPU에 권장되는 드라이버를 설치하고 재부팅합니다. 이미 작동 중인 드라이버를 그래프 문제만으로 재설치할 필요는 없습니다.
+
+`nvidia-smi`가 정상인데 btop에 표시되지 않으면 GPU 지원 빌드 여부, NVML 로딩 오류, `shown_gpus`와 `shown_boxes`를 확인합니다. CUDA Toolkit 전체를 설치하는 것은 btop GPU 그래프의 필수 조건이 아닙니다.
+
+### 17-5. 로그 확인과 WSL 참고
+
+```zsh
+btop --debug
+```
+
+문제를 재현하고 `q`로 종료한 뒤 로그를 확인합니다. 이번 Homebrew btop 1.4.7의 로그 위치는 다음과 같았습니다.
+
+```zsh
+tail -n 60 "${XDG_STATE_HOME:-$HOME/.local/state}/btop.log"
+```
+
+버전과 설치 방식에 따라 로그 위치가 다를 수 있습니다. 라이브러리 로딩 실패는 라이브러리 설치·탐색 경로를, 권한 오류는 장치·성능 카운터 접근 권한을 점검합니다.
+
+WSL에서는 Windows 드라이버가 노출하는 GPU 기능을 사용하므로 일반 Ubuntu의 `/dev/dri`, sysfs, 성능 카운터와 동일한 통계가 제공된다고 가정하면 안 됩니다. AMD·Intel의 위 절차도 WSL에서 동일한 표시를 보장하지 않습니다. NVIDIA WSL에서는 Windows용 NVIDIA 드라이버를 사용하며, WSL 안에 Linux용 NVIDIA 디스플레이 드라이버를 설치하지 않습니다. `nvidia-smi`가 PATH에 없다면 `/usr/lib/wsl/lib/nvidia-smi`를 확인하세요. NVML의 지원 범위에 따라 일부 통계는 표시되지 않을 수 있습니다.
+
+참고 자료:
+
+- [btop 1.4.7 공식 안내: GPU 호환성과 설치 권한](https://github.com/aristocratos/btop/blob/v1.4.7/README.md)
+- [Intel Xe 지원 PR #1457](https://github.com/aristocratos/btop/pull/1457)
+- [NVIDIA CUDA on WSL 안내](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+
+AMD 항목은 이 시스템에서 실행 검증했으며, Intel·NVIDIA 항목은 공식 자료에 따른 점검 안내입니다.
+
+## 18. SSH 비밀번호 로그인과 부팅 시 자동 시작
+
+2026-10-18에 일반 Ubuntu 26.10 PC `cozy-ubuntu`에서 적용했습니다. 과거 Mem0의 WSL 기록과 현재 환경이 다른 것을 확인한 뒤 진행했습니다. `cozy` 계정의 기존 Linux 로그인 비밀번호를 그대로 사용하며, 비밀번호는 변경하지 않았습니다.
+
+### 18-1. 서버 설치와 비밀번호 인증 설정
+
+```sh
+sudo apt-get install -y openssh-server
+sudo install -d -m 755 /etc/ssh/sshd_config.d
+printf '%s\n' 'PasswordAuthentication yes' | sudo tee /etc/ssh/sshd_config.d/00-local-password-auth.conf
+sudo systemctl enable --now ssh.socket ssh.service
+sudo /usr/sbin/sshd -t && sudo systemctl reload ssh.service
+```
+
+### 18-3. 확인 명령과 적용 결과
+
+```sh
+sudo /usr/sbin/sshd -t
+systemctl is-enabled ssh.service ssh.socket
+systemctl is-active ssh.service ssh.socket
+ss -ltn 'sport = :22'
+sudo /usr/sbin/sshd -T -C user=cozy,host=cozy-ubuntu,addr=192.168.0.2 | rg -i '^(passwordauthentication|usepam|authenticationmethods|permitrootlogin|permitemptypasswords) '
 ```
